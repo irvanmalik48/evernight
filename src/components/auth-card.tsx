@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
   Field,
   FieldError,
@@ -15,9 +10,16 @@ import {
 import * as z from "zod";
 import { useForm } from "@tanstack/react-form";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
 import { Button } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "./ui/input-group";
+import { AtSign, Check, Eye, EyeOff, KeyRound, X } from "lucide-react";
+import { useMemo, useState } from "react";
 
 const loginFormSchema = z.object({
   email: z.email("Must be a valid email."),
@@ -29,6 +31,14 @@ const loginFormSchema = z.object({
 
 const registerFormSchema = z
   .object({
+    avatar: z
+      .file()
+      .mime("image/*", "File must be an image.")
+      .refine(
+        (file) => file.size <= 5 * 1024 * 1024,
+        "File size must be less than 5MB.",
+      )
+      .optional(),
     email: z.email("Must be a valid email."),
     password: z
       .string()
@@ -45,6 +55,48 @@ const registerFormSchema = z
   });
 
 export function AuthCard(props: React.HTMLAttributes<HTMLDivElement>) {
+  const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+
+  const checkStrength = (pass: string) => {
+    const requirements = [
+      { regex: /.{8,}/, text: "At least 8 characters" },
+      { regex: /[0-9]/, text: "At least 1 number" },
+      { regex: /[a-z]/, text: "At least 1 lowercase letter" },
+      { regex: /[A-Z]/, text: "At least 1 uppercase letter" },
+      { regex: /[!@#$%^&*(),.?":{}|<>]/, text: "At least 1 special character" },
+    ];
+
+    return requirements.map((req) => ({
+      met: req.regex.test(pass),
+      text: req.text,
+    }));
+  };
+
+  const strength = checkStrength(password);
+
+  const strengthScore = useMemo(() => {
+    return strength.filter((req) => req.met).length;
+  }, [strength]);
+
+  const getStrengthColor = (score: number) => {
+    if (score === 0) return "bg-border";
+    if (score <= 1) return "bg-red-500";
+    if (score <= 2) return "bg-orange-500";
+    if (score === 3) return "bg-amber-500";
+    if (score === 4) return "bg-yellow-500";
+    return "bg-emerald-500";
+  };
+
+  const getStrengthText = (score: number) => {
+    if (score === 0) return "Enter a password";
+    if (score <= 2) return "Weak password";
+    if (score <= 3) return "Medium password";
+    if (score === 4) return "Strong password";
+    return "Very strong password";
+  };
+
   const loginForm = useForm({
     defaultValues: {
       email: "",
@@ -54,6 +106,8 @@ export function AuthCard(props: React.HTMLAttributes<HTMLDivElement>) {
       onSubmit: loginFormSchema,
     },
     onSubmit: async (values) => {
+      setPasswordVisible(false);
+      setConfirmPasswordVisible(false);
       toast.success("Login successful!");
       console.log(values);
     },
@@ -69,6 +123,8 @@ export function AuthCard(props: React.HTMLAttributes<HTMLDivElement>) {
       onSubmit: registerFormSchema,
     },
     onSubmit: async (values) => {
+      setPasswordVisible(false);
+      setConfirmPasswordVisible(false);
       toast.success("Registration successful!");
       console.log(values);
     },
@@ -76,19 +132,33 @@ export function AuthCard(props: React.HTMLAttributes<HTMLDivElement>) {
 
   return (
     <Tabs defaultValue="login" className={props.className}>
-      <TabsList className="w-full">
-        <TabsTrigger onClick={() => registerForm.reset()} value="login">
+      <TabsList className="w-full rounded-full">
+        <TabsTrigger
+          className="rounded-full"
+          onClick={() => {
+            setPassword("");
+            setPasswordVisible(false);
+            setConfirmPasswordVisible(false);
+            return registerForm.reset();
+          }}
+          value="login"
+        >
           Login
         </TabsTrigger>
-        <TabsTrigger onClick={() => loginForm.reset()} value="register">
+        <TabsTrigger
+          className="rounded-full"
+          onClick={() => {
+            setPasswordVisible(false);
+            setConfirmPasswordVisible(false);
+            return loginForm.reset();
+          }}
+          value="register"
+        >
           Register
         </TabsTrigger>
       </TabsList>
       <TabsContent value="login">
         <Card>
-          <CardHeader>
-            <h2 className="font-semibold text-center w-full">Login</h2>
-          </CardHeader>
           <CardContent>
             <form
               id="login-form"
@@ -106,17 +176,22 @@ export function AuthCard(props: React.HTMLAttributes<HTMLDivElement>) {
                     return (
                       <Field data-invalid={isInvalid}>
                         <FieldLabel htmlFor={field.name}>Email</FieldLabel>
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          type="email"
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          aria-invalid={isInvalid}
-                          placeholder="Please enter your email address"
-                          autoComplete="email"
-                        />
+                        <InputGroup>
+                          <InputGroupInput
+                            id={field.name}
+                            name={field.name}
+                            type="email"
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            aria-invalid={isInvalid}
+                            placeholder="Please enter your email address"
+                            autoComplete="email"
+                          />
+                          <InputGroupAddon align="inline-start">
+                            <AtSign />
+                          </InputGroupAddon>
+                        </InputGroup>
                         {isInvalid && (
                           <FieldError errors={field.state.meta.errors} />
                         )}
@@ -132,17 +207,41 @@ export function AuthCard(props: React.HTMLAttributes<HTMLDivElement>) {
                     return (
                       <Field data-invalid={isInvalid}>
                         <FieldLabel htmlFor={field.name}>Password</FieldLabel>
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          type="password"
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          aria-invalid={isInvalid}
-                          placeholder="Please enter your password"
-                          autoComplete="current-password"
-                        />
+                        <InputGroup>
+                          <InputGroupInput
+                            id={field.name}
+                            name={field.name}
+                            type={passwordVisible ? "text" : "password"}
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            aria-invalid={isInvalid}
+                            placeholder="Please enter your password"
+                            autoComplete="current-password"
+                          />
+                          <InputGroupAddon align="inline-start">
+                            <KeyRound />
+                          </InputGroupAddon>
+                          {passwordVisible ? (
+                            <InputGroupAddon align="inline-end">
+                              <InputGroupButton
+                                className="cursor-pointer"
+                                onClick={() => setPasswordVisible(false)}
+                              >
+                                <EyeOff />
+                              </InputGroupButton>
+                            </InputGroupAddon>
+                          ) : (
+                            <InputGroupAddon align="inline-end">
+                              <InputGroupButton
+                                className="cursor-pointer"
+                                onClick={() => setPasswordVisible(true)}
+                              >
+                                <Eye />
+                              </InputGroupButton>
+                            </InputGroupAddon>
+                          )}
+                        </InputGroup>
                         {isInvalid && (
                           <FieldError errors={field.state.meta.errors} />
                         )}
@@ -174,9 +273,6 @@ export function AuthCard(props: React.HTMLAttributes<HTMLDivElement>) {
       </TabsContent>
       <TabsContent value="register">
         <Card>
-          <CardHeader>
-            <h2 className="font-semibold text-center w-full">Register</h2>
-          </CardHeader>
           <CardContent>
             <form
               id="register-form"
@@ -194,17 +290,22 @@ export function AuthCard(props: React.HTMLAttributes<HTMLDivElement>) {
                     return (
                       <Field data-invalid={isInvalid}>
                         <FieldLabel htmlFor={field.name}>Email</FieldLabel>
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          type="email"
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          aria-invalid={isInvalid}
-                          placeholder="Please enter your email address"
-                          autoComplete="email"
-                        />
+                        <InputGroup>
+                          <InputGroupInput
+                            id={field.name}
+                            name={field.name}
+                            type="email"
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            aria-invalid={isInvalid}
+                            placeholder="Please enter your email address"
+                            autoComplete="email"
+                          />
+                          <InputGroupAddon align="inline-start">
+                            <AtSign />
+                          </InputGroupAddon>
+                        </InputGroup>
                         {isInvalid && (
                           <FieldError errors={field.state.meta.errors} />
                         )}
@@ -220,20 +321,104 @@ export function AuthCard(props: React.HTMLAttributes<HTMLDivElement>) {
                     return (
                       <Field data-invalid={isInvalid}>
                         <FieldLabel htmlFor={field.name}>Password</FieldLabel>
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          type="password"
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          aria-invalid={isInvalid}
-                          placeholder="Please enter your password"
-                          autoComplete="new-password"
-                        />
+                        <InputGroup>
+                          <InputGroupInput
+                            id={field.name}
+                            name={field.name}
+                            type={passwordVisible ? "text" : "password"}
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(e) => {
+                              setPassword(e.target.value);
+                              return field.handleChange(e.target.value);
+                            }}
+                            aria-invalid={isInvalid}
+                            placeholder="Please enter your password"
+                            autoComplete="new-password"
+                          />
+                          <InputGroupAddon align="inline-start">
+                            <KeyRound />
+                          </InputGroupAddon>
+                          {passwordVisible ? (
+                            <InputGroupAddon align="inline-end">
+                              <InputGroupButton
+                                className="cursor-pointer"
+                                onClick={() => setPasswordVisible(false)}
+                              >
+                                <EyeOff />
+                              </InputGroupButton>
+                            </InputGroupAddon>
+                          ) : (
+                            <InputGroupAddon align="inline-end">
+                              <InputGroupButton
+                                className="cursor-pointer"
+                                onClick={() => setPasswordVisible(true)}
+                              >
+                                <Eye />
+                              </InputGroupButton>
+                            </InputGroupAddon>
+                          )}
+                        </InputGroup>
                         {isInvalid && (
                           <FieldError errors={field.state.meta.errors} />
                         )}
+                        <div
+                          className="my-1 h-1 w-full overflow-hidden rounded-full bg-border"
+                          role="progressbar"
+                          aria-valuenow={strengthScore}
+                          aria-valuemin={0}
+                          aria-valuemax={5}
+                          aria-label="Password strength"
+                        >
+                          <div
+                            className={`h-full ${getStrengthColor(
+                              strengthScore,
+                            )} transition-all duration-500 ease-out`}
+                            style={{ width: `${(strengthScore / 5) * 100}%` }}
+                          ></div>
+                        </div>
+                        <p
+                          id="password-strength"
+                          className="mb-1 text-sm font-medium text-foreground"
+                        >
+                          {getStrengthText(strengthScore)}.
+                        </p>
+                        <ul
+                          className="space-y-1.5"
+                          aria-label="Password requirements"
+                        >
+                          {strength.map((req, index) => (
+                            <li key={index} className="flex items-center gap-2">
+                              {req.met ? (
+                                <Check
+                                  size={16}
+                                  className="text-emerald-500"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <X
+                                  size={16}
+                                  className="text-muted-foreground/80"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              <span
+                                className={`text-xs ${
+                                  req.met
+                                    ? "text-emerald-600"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
+                                {req.text}
+                                <span className="sr-only">
+                                  {req.met
+                                    ? " - Requirement met"
+                                    : " - Requirement not met"}
+                                </span>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
                       </Field>
                     );
                   }}
@@ -248,17 +433,41 @@ export function AuthCard(props: React.HTMLAttributes<HTMLDivElement>) {
                         <FieldLabel htmlFor={field.name}>
                           Confirm Password
                         </FieldLabel>
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          type="password"
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          aria-invalid={isInvalid}
-                          placeholder="Please confirm your password"
-                          autoComplete="new-password"
-                        />
+                        <InputGroup>
+                          <InputGroupInput
+                            id={field.name}
+                            name={field.name}
+                            type={confirmPasswordVisible ? "text" : "password"}
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            aria-invalid={isInvalid}
+                            placeholder="Please confirm your password"
+                            autoComplete="new-password"
+                          />
+                          <InputGroupAddon align="inline-start">
+                            <KeyRound />
+                          </InputGroupAddon>
+                          {confirmPasswordVisible ? (
+                            <InputGroupAddon align="inline-end">
+                              <InputGroupButton
+                                className="cursor-pointer"
+                                onClick={() => setConfirmPasswordVisible(false)}
+                              >
+                                <EyeOff />
+                              </InputGroupButton>
+                            </InputGroupAddon>
+                          ) : (
+                            <InputGroupAddon align="inline-end">
+                              <InputGroupButton
+                                className="cursor-pointer"
+                                onClick={() => setConfirmPasswordVisible(true)}
+                              >
+                                <Eye />
+                              </InputGroupButton>
+                            </InputGroupAddon>
+                          )}
+                        </InputGroup>
                         {isInvalid && (
                           <FieldError errors={field.state.meta.errors} />
                         )}
@@ -277,7 +486,10 @@ export function AuthCard(props: React.HTMLAttributes<HTMLDivElement>) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => registerForm.reset()}
+                onClick={() => {
+                  setPassword("");
+                  return registerForm.reset();
+                }}
               >
                 Reset
               </Button>
