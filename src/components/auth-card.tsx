@@ -31,14 +31,6 @@ const loginFormSchema = z.object({
 
 const registerFormSchema = z
   .object({
-    avatar: z
-      .file()
-      .mime("image/*", "File must be an image.")
-      .refine(
-        (file) => file.size <= 5 * 1024 * 1024,
-        "File size must be less than 5MB.",
-      )
-      .optional(),
     email: z.email("Must be a valid email."),
     password: z
       .string()
@@ -58,6 +50,7 @@ export function AuthCard(props: React.HTMLAttributes<HTMLDivElement>) {
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
 
   const checkStrength = (pass: string) => {
     const requirements = [
