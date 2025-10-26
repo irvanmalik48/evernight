@@ -50,7 +50,6 @@ export function AuthCard(props: React.HTMLAttributes<HTMLDivElement>) {
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
 
   const checkStrength = (pass: string) => {
     const requirements = [
